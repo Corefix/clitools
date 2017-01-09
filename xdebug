@@ -1,0 +1,29 @@
+#!/bin/bash
+
+STATUS=$1;
+
+FILE_PATH="/usr/local/etc/php/7.0/conf.d/ext-xdebug.ini"
+
+if [ $STATUS -eq 1 ] 
+then
+	echo "Enabling Xdebug"
+	read -d '' CONTENT << EOF
+[xdebug]
+zend_extension="/usr/local/opt/php70-xdebug/xdebug.so"
+xdebug.remote_enable=1
+xdebug.profiler_enable=1
+xdebug.remote_port="9000"
+xdebug.idekey="PHPSTORM"
+EOF
+else
+	echo "Disabling Xdebug"
+	CONTENT=';nothing'
+fi
+
+if [ -f "$FILE_PATH" ]
+then 
+	echo "$CONTENT" > $FILE_PATH
+fi
+
+echo "Restarting apache";
+sudo apachectl -k restart

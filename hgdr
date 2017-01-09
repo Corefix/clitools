@@ -1,0 +1,58 @@
+#!/usr/bin/env php
+<?php
+
+define('DS', '/');
+
+if (PHP_SAPI !== 'cli') {
+    printf('You can only run this as CLI command');
+    exit(1);
+}
+
+printf("Downloading repo for module\n");
+
+$folderPath = getcwd();
+$folders = explode(DS, $folderPath);
+
+$moduleName = $folders[count($folders) - 1];
+$vendorName = $folders[count($folders) - 2];
+
+$mainComposerLockFile = implode(DS, array_slice($folders, 0, count($folders) - 3)) . DS . 'composer.lock'; 
+
+$composerLockContent = json_decode(file_get_contents($mainComposerLockFile));
+
+
+$vcsUrl = false;
+foreach($composerLockContent->packages as $package) {
+	if ($package->name == $vendorName . DS . $moduleName) {
+		define('VCS', $package->source->type);
+		printf("Using VCS: %s\n", VCS);
+		$vcsUrl = $package->source->url;
+		$revision = $package->source->reference;
+	}
+}
+
+if (!$vcsUrl) {
+	printf("ERROR no module with name '%s%s%s' found in composer.lock", $vendorName, DS, $moduleName);
+	exit;
+}
+
+$tmpDir = $folderPath . DS . 'tmp-vcs-download-dir';
+
+printf("Creating new tmp dir: %s\n", $tmpDir);
+
+if (is_dir($tmpDir)) {
+	exec(sprintf('rm -r %s', $tmpDir));
+}
+mkdir($tmpDir);
+
+printf("Cloning repo: %s\n", $vcsUrl);
+
+exec(sprintf('%s clone -r %s %s %s', VCS, $revision, $vcsUrl, $tmpDir));
+
+exec(sprintf('cp -R %s/.%s %s/', $tmpDir, VCS, $folderPath));
+
+printf("Cleaning up ... \n");
+
+exec(sprintf('rm -r %s', $tmpDir));
+
+printf("Module downloaded - GLHF\n");
